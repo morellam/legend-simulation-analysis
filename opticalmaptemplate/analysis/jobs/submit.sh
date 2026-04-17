@@ -8,12 +8,20 @@
 # One task per node (single-threading)
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=20G
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=200G
+
+# SBATCH --exclude=lfl13,lfl12,lfl00,lfl03,lfl14,lfl15
+# SBATCH --exclude=lfl14,lfl15
+# SBATCH --nodelist=lfl18
+# SBATCH --mail-type=FAIL
+# SBATCH --mail-user=michele.morella@gssi.it
 
 # Request x minutes of runtime - the job will be killed if it exceeds this
-##SBATCH --time=x:00
+#SBATCH --time=07-00
 
 ### Commands to run the program start here ####################################
 
-singularity exec /lfs/l1/legend/software/singularity/legendexp_legend-software_latest.sif /bin/bash run_py.sh
+# singularity exec /lfs/l1/legend/software/apptainer/legendexp_legend-software_latest.sif /bin/bash run_py.sh $1 $2
+# cenv legend-software /bin/bash run_py.sh $1 $2 $3 $4 $5
+cenv legend-software /bin/bash run_py.sh $1 $2 $3 
