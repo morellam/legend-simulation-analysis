@@ -1,4 +1,3 @@
-from legend_plot_style import LEGENDPlotStyle as lps
 import os
 import uproot
 import numpy as np
@@ -7,7 +6,7 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 
 
-def load_data(path, shield_surface, files_to_open):
+def load_data(path, shield_surface, files_to_open, name_tag):
     """
     Load data from files into unique array
 
@@ -16,7 +15,7 @@ def load_data(path, shield_surface, files_to_open):
     files_to_open: either string "all" to load data from all the files or int with number of files
     """
 
-    files = sorted([file for file in os.listdir(path) if "appliedmap" in file])
+    files = sorted([file for file in os.listdir(path) if name_tag in file])
 
     if files_to_open != "all":
         files = files[:files_to_open]
@@ -37,8 +36,8 @@ def load_data(path, shield_surface, files_to_open):
         
         df = pd.concat([tmp_df, df])
         
-    evt_list = sorted(df.EventID.unique())
-    total_nof_events = len(evt_list)
+    # evt_list = sorted(df.EventID.unique())
+    # total_nof_events = len(evt_list)
 
     return df
 
@@ -124,7 +123,8 @@ def get_muon_rate():
     muon rate is specific of MUSUN sim
     it won't be correct for other MUSUN sims
     """
-
+    
+    # wrong, should be using 504
     muon_rate = 263 # muons / hour
 
     return muon_rate / 3600 # Hz
@@ -192,6 +192,54 @@ def get_guides(H, bar_width, n_bar):
     return residual_space, slices, guide_position
 
 
+def slicing_windowing(df, surface_length, n_bar, bar_width, detection_efficiency, time_window = 0):
+
+    """
+    take data from histogrammed panel surface and slice it into a given number of light guides according to
+    the their size and number; then apply single light guide Photon Detection Efficiency (PDE)
+    output is the number of PE detected per light guide per panel per event
+    """
+    
+    residual_space, slices, guide_position = get_guides(surface_length, bar_width, n_bar)
+    
+    if time_window > 0:
+        df = df.sort_values(['EventID','time']).reset_index(drop=True)        
+        bin_start = 0
+        bin_end = 0
+        bins = []
+        for dx in df.groupby('EventID'):
+            #Initialize the first time bin
+            bin_start = round(dx[1].iloc[0, 4],6)
+            bin_end = round(bin_start + time_window,6)
+            
+            for idx, rowe in dx[1].iterrows():
+                if(rowe.iloc[4] > bin_end):
+                    bin_start = round(rowe.iloc[4],6)
+                    bin_end = round(bin_start + time_window,6)
+                bins.append(pd.Interval(bin_start,bin_end,closed='both'))
+        
+        df['time_bin'] = bins    
+        #df['time_bin'] = pd.cut(df['time'], bins=bins)
+        grouped_zband = df.groupby(["EventID", "panel", "time_bin"],group_keys=True).zband
+        grouped_zband_tolist = grouped_zband.apply(lambda d: list(d)).dropna()
+        grouped_df = grouped_zband_tolist.apply(np.sum, axis = 0)
+    if time_window == 0:
+        grouped_df = df.groupby(["EventID", "panel"],group_keys=True).zband.sum()
+        sliced_df = grouped_df.apply(lambda d: np.split(d, slices))
+
+    sliced_df = grouped_df.apply(lambda d: np.split(d, slices))
+
+    if residual_space:
+        sliced_df = sliced_df.apply(lambda d: [np.sum(array)*pos for array, pos in zip(d[1:-1], guide_position)])
+    else:
+        sliced_df = sliced_df.apply(lambda d: [np.sum(array)*pos for array, pos in zip(d, guide_position)])
+
+    sliced_df = sliced_df.apply(lambda d: np.random.binomial(d, detection_efficiency))
+
+    return sliced_df
+
+
+
 def slicing(df, surface_length, n_bar, bar_width, detection_efficiency, time_window = 0):
 
     """
@@ -209,7 +257,8 @@ def slicing(df, surface_length, n_bar, bar_width, detection_efficiency, time_win
         grouped_zband_tolist = grouped_zband.apply(lambda d: list(d)).dropna()
         grouped_df = grouped_zband_tolist.apply(np.sum, axis = 0)
     else:
-        grouped_df = df.groupby(["EventID", "panel"]).zband.sum()
+        # grouped_df = df.groupby(["EventID", "panel"]).zband.sum()
+        grouped_df = df.groupby(["EventID", "panel"]).zband.apply(np.sum)
         sliced_df = grouped_df.apply(lambda d: np.split(d, slices))
 
     sliced_df = grouped_df.apply(lambda d: np.split(d, slices))
