@@ -1,0 +1,30 @@
+{
+    "singularity image" : "/lfs/l1/legend/users/morella/legend1k_simulation/remage-base.sif",
+    "general output" : "output/radius_scan",
+    "geometry moderator": 3,
+    "radius": 170,
+    "height": 300,
+    "width": 8,
+    "cryo_outer_radius" : 350,
+    "cryo_outer_height" : 375,
+    
+    "muon simulations":
+    {
+        "musun_path" : "/lfs/l1/legend/users/morella/Musun_FromMoritz",
+        "output dir": "8cm",
+        "musun files": 200,
+        "beam_on": 50000
+    },
+
+    "combine inputs":
+    {
+        "cascade file" : "/lfs/l1/legend/users/morella/legend1k_simulation/argon_energy_deposit/shared/notebooks/cascades-ar-10keV.txt", 
+        "output dir" : "combined_inputs"
+    },
+    
+    "gamma simulations" :
+    {
+        "output_dir" : "gamma_simulations",
+        "beam_on" : 1000000
+    }
+}
